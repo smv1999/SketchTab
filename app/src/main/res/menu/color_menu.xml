@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="utf-8"?>
+<menu xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto">
+
+
+    <item
+        android:id="@+id/pen"
+        android:icon="@drawable/ic_white_new_draw"
+        android:title="Pen"
+        app:showAsAction="always"
+        android:orderInCategory="0"/>
+    <item
+        android:id="@+id/brush"
+        android:icon="@drawable/ic_brush"
+        android:title="Paint Brush"
+        app:showAsAction="always"
+        android:orderInCategory="0"/>
+
+    <item
+        android:id="@+id/clear"
+        android:icon="@drawable/ic_eraser"
+        android:title="Eraser"
+        app:showAsAction="always"
+        android:orderInCategory="0"/>
+
+    <item
+        android:id="@+id/delete"
+        android:icon="@drawable/ic_delete"
+        android:title="Clear Screen"
+        app:showAsAction="always"
+        android:orderInCategory="0"/>
+
+    <item
+        android:id="@+id/action_name"
+        android:icon="@drawable/colorgrid"
+        android:title="Color Picker"
+        app:showAsAction="always"
+        android:orderInCategory="0"/>
+
+</menu>
