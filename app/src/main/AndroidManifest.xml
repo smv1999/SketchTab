@@ -17,8 +17,9 @@
             android:name="com.google.android.gms.ads.APPLICATION_ID"
             android:value="ca-app-pub-2146816081015696~4357690403" />
 
-        <activity android:name=".NewDrawingActivity" android:screenOrientation="portrait"></activity>
         <activity android:name=".MainActivity" android:screenOrientation="portrait">
+        </activity>
+        <activity android:name=".SplashScreenActivity" android:screenOrientation="portrait"  android:theme="@style/AppTheme.NoActionBar">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
 

@@ -13,6 +13,7 @@ import android.graphics.Paint;
 import android.graphics.Path;
 import android.net.Uri;
 import android.os.Bundle;
+import android.os.Environment;
 import android.util.Log;
 import android.view.Menu;
 import android.view.MenuItem;
@@ -29,60 +30,157 @@ import com.google.android.gms.ads.initialization.InitializationStatus;
 import com.google.android.gms.ads.initialization.OnInitializationCompleteListener;
 import com.google.android.material.bottomnavigation.BottomNavigationView;
 
+import java.io.FileOutputStream;
+
+import yuku.ambilwarna.AmbilWarnaDialog;
+
 public class MainActivity extends AppCompatActivity {
 
+    MainActivity.DrawingView dv;
+    private Paint mPaint;
+    int initialColor;
+    private static final int MY_PERMISSIONS_REQUEST_READ_EXTERNAL_STORAGE = 1;
 
-    private ViewPager mViewPager;
-    private InterstitialAd mInterstitialAd;
+    FileOutputStream fos = null;
+
+
+    public int width;
+    public int height;
+    private Bitmap mBitmap;
+    private Canvas mCanvas;
+    private Path mPath;
+    private Paint mBitmapPaint;
+    Context context;
+    private Paint circlePaint;
+    private Path circlePath;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        setContentView(R.layout.activity_main);
-        BottomNavigationView navView = findViewById(R.id.nav_view);
-        navView.setOnNavigationItemSelectedListener(mOnNavigationItemSelectedListener);
+        dv = new MainActivity.DrawingView(this);
+        dv.setBackgroundColor(Color.WHITE);
+        setContentView(dv);
 
-        mViewPager = (ViewPager) findViewById(R.id.pager);
+        getSupportActionBar().setTitle("Sketch");
 
-        MobileAds.initialize(this, new OnInitializationCompleteListener() {
-            @Override
-            public void onInitializationComplete(InitializationStatus initializationStatus) {
-            }
-        });
+        mPaint = new Paint();
+        mPaint.setAntiAlias(true);
+        mPaint.setDither(true);
+        mPaint.setColor(Color.BLUE);
+        initialColor = Color.BLUE;
 
-        mInterstitialAd = new InterstitialAd(this);
-        mInterstitialAd.setAdUnitId("ca-app-pub-2146816081015696/2661465353");
-        mInterstitialAd.loadAd(new AdRequest.Builder().build());
-
-        // test purpose ca-app-pub-3940256099942544/1033173712
-
-        // publishing app ca-app-pub-2146816081015696/2661465353
-
-        mInterstitialAd.setAdListener(new AdListener() {
-            @Override
-            public void onAdClosed() {
-                // Load the next interstitial.
-                mInterstitialAd.loadAd(new AdRequest.Builder().build());
-            }
-
-        });
-
-// This is just an example. You can use whatever collection of images.
-        int[] mResources = {
-                R.drawable.image1,
-                R.drawable.image2,
-                R.drawable.image3
-        };
-
-        CustomPagerAdapter mCustomPagerAdapter = new CustomPagerAdapter(this, mResources);
-
-        mViewPager.setAdapter(mCustomPagerAdapter);
+        mPaint.setStyle(Paint.Style.STROKE);
+        mPaint.setStrokeJoin(Paint.Join.ROUND);
+        mPaint.setStrokeCap(Paint.Cap.ROUND);
+        mPaint.setStrokeWidth(12);
 
     }
+
+    public class DrawingView extends View {
+
+
+        public DrawingView(Context c) {
+            super(c);
+            context = c;
+            mPath = new Path();
+            mBitmapPaint = new Paint(Paint.DITHER_FLAG);
+            circlePaint = new Paint();
+            circlePath = new Path();
+            circlePaint.setAntiAlias(true);
+            circlePaint.setColor(Color.BLUE);
+            circlePaint.setStyle(Paint.Style.STROKE);
+            circlePaint.setStrokeJoin(Paint.Join.MITER);
+            circlePaint.setStrokeWidth(4f);
+        }
+
+        @Override
+        protected void onSizeChanged(int w, int h, int oldw, int oldh) {
+            super.onSizeChanged(w, h, oldw, oldh);
+
+            mBitmap = Bitmap.createBitmap(w, h, Bitmap.Config.ARGB_8888);
+            mCanvas = new Canvas(mBitmap);
+        }
+
+        @Override
+        protected void onDraw(Canvas canvas) {
+            super.onDraw(canvas);
+
+            canvas.drawBitmap(mBitmap, 0, 0, mBitmapPaint);
+            canvas.drawPath(mPath, mPaint);
+            canvas.drawPath(circlePath, circlePaint);
+        }
+
+        private float mX, mY;
+        private static final float TOUCH_TOLERANCE = 4;
+
+        private void touch_start(float x, float y) {
+            mPath.reset();
+            mPath.moveTo(x, y);
+            mX = x;
+            mY = y;
+        }
+
+        private void touch_move(float x, float y) {
+            float dx = Math.abs(x - mX);
+            float dy = Math.abs(y - mY);
+            if (dx >= TOUCH_TOLERANCE || dy >= TOUCH_TOLERANCE) {
+                mPath.quadTo(mX, mY, (x + mX) / 2, (y + mY) / 2);
+                mX = x;
+                mY = y;
+
+                circlePath.reset();
+                circlePath.addCircle(mX, mY, 30, Path.Direction.CW);
+            }
+        }
+
+        private void touch_up() {
+            mPath.lineTo(mX, mY);
+            circlePath.reset();
+            // commit the path to our offscreen
+            mCanvas.drawPath(mPath, mPaint);
+            // kill this so we don't double draw
+            mPath.reset();
+        }
+
+        @Override
+        public boolean onTouchEvent(MotionEvent event) {
+            float x = event.getX();
+            float y = event.getY();
+
+            switch (event.getAction()) {
+                case MotionEvent.ACTION_DOWN:
+                    touch_start(x, y);
+                    invalidate();
+                    break;
+                case MotionEvent.ACTION_MOVE:
+                    touch_move(x, y);
+                    invalidate();
+                    break;
+                case MotionEvent.ACTION_UP:
+                    touch_up();
+                    invalidate();
+                    break;
+            }
+            return true;
+        }
+
+        public Bitmap getBitmap() {
+            //this.measure(100, 100);
+            //this.layout(0, 0, 100, 100);
+            this.setDrawingCacheEnabled(true);
+            this.buildDrawingCache();
+            Bitmap bmp = Bitmap.createBitmap(this.getDrawingCache());
+            this.setDrawingCacheEnabled(false);
+
+
+            return bmp;
+        }
+    }
+
     @Override
     public boolean onCreateOptionsMenu(Menu menu) {
         // Inflate the menu; this adds items to the action bar if it is present.
-        getMenuInflater().inflate(R.menu.main_menu, menu);
+        getMenuInflater().inflate(R.menu.color_menu, menu);
         return true;
     }
 
@@ -93,52 +191,76 @@ public class MainActivity extends AppCompatActivity {
         // as you specify a parent activity in AndroidManifest.xml.
         int id = item.getItemId();
 
-        if(id==R.id.info)
-        {
-            Intent browserIntent = new Intent(Intent.ACTION_VIEW, Uri.parse("https://programmersgateway.github.io/"));
-            startActivity(browserIntent);
+        //noinspection SimplifiableIfStatement
+        if (id == R.id.action_name) {
+            final AmbilWarnaDialog dialog = new AmbilWarnaDialog(this, initialColor, new AmbilWarnaDialog.OnAmbilWarnaListener() {
+                @Override
+                public void onOk(AmbilWarnaDialog dialog, int color) {
+                    // color is the color selected by the user.
+                    mPaint.setColor(color);
+                    initialColor = color;
+                }
+
+                @Override
+                public void onCancel(AmbilWarnaDialog dialog) {
+                    // cancel was selected by the user
+                }
+            });
+            dialog.show();
+            return true;
         }
+        if (id == R.id.clear) {
+            mPaint.setStyle(Paint.Style.STROKE);
+            mPaint.setStrokeJoin(Paint.Join.ROUND);
+            mPaint.setStrokeCap(Paint.Cap.ROUND);
+            mPaint.setStrokeWidth(30);
+            mPaint.setColor(Color.WHITE);
+        }
+        if (id == R.id.delete) {
+            mCanvas.drawColor(Color.WHITE);
+            mPaint.setColor(initialColor);
+        }
+        if (id == R.id.brush) {
+            mPaint.setStyle(Paint.Style.STROKE);
+            mPaint.setStrokeJoin(Paint.Join.ROUND);
+            mPaint.setStrokeCap(Paint.Cap.ROUND);
+            mPaint.setStrokeWidth(50);
+            mPaint.setColor(initialColor);
+
+        }
+        if (id == R.id.pen) {
+            mPaint.setStyle(Paint.Style.STROKE);
+            mPaint.setStrokeJoin(Paint.Join.ROUND);
+            mPaint.setStrokeCap(Paint.Cap.ROUND);
+            mPaint.setStrokeWidth(10);
+            mPaint.setColor(initialColor);
+        }
+
         return super.onOptionsItemSelected(item);
     }
-
-    @Override
-    protected void onPause() {
-        super.onPause();
-        if (mInterstitialAd.isLoaded()) {
-            mInterstitialAd.show();
-        } else {
-            Log.d("TAG", "The interstitial wasn't loaded yet.");
-        }
+    public void takeScreenshot(){
+        Bitmap bitmap = getScreenBitmap(); // Get the bitmap
+        saveTheBitmap(bitmap);               // Save it to the external storage device.
     }
 
-    @Override
-    protected void onResume() {
-        super.onResume();
-        if (mInterstitialAd.isLoaded()) {
-            mInterstitialAd.show();
-        } else {
-            Log.d("TAG", "The interstitial wasn't loaded yet.");
-        }
-    }
-    private BottomNavigationView.OnNavigationItemSelectedListener mOnNavigationItemSelectedListener
-            = new BottomNavigationView.OnNavigationItemSelectedListener() {
+    private void saveTheBitmap(Bitmap bitmap) {
 
-        @Override
-        public boolean onNavigationItemSelected(@NonNull MenuItem item) {
-            switch (item.getItemId()) {
-                case R.id.new_draw:
-                    if (mInterstitialAd.isLoaded()) {
-                        mInterstitialAd.show();
-                    } else {
-                        Log.d("TAG", "The interstitial wasn't loaded yet.");
-                    }
-                    Intent i = new Intent(MainActivity.this,NewDrawingActivity.class);
-                    startActivity(i);
-                    return true;
-                case R.id.navigation_home:
-                    return true;
-            }
-            return false;
-        }
-    };
+        sendBroadcast(new Intent(Intent.ACTION_MEDIA_MOUNTED, Uri.parse("file://" + Environment.getExternalStorageDirectory())));
+
+    }
+
+    public Bitmap getScreenBitmap() {
+        View v= findViewById(android.R.id.content).getRootView();
+        v.setDrawingCacheEnabled(true);
+        v.measure(View.MeasureSpec.makeMeasureSpec(0, View.MeasureSpec.UNSPECIFIED),
+                View.MeasureSpec.makeMeasureSpec(0, View.MeasureSpec.UNSPECIFIED));
+        v.layout(0, 0, v.getMeasuredWidth(), v.getMeasuredHeight());
+
+        v.buildDrawingCache(true);
+        Bitmap b = Bitmap.createBitmap(v.getDrawingCache());
+        v.setDrawingCacheEnabled(false); // clear drawing cache
+        return b;
+    }
+
+
 }
