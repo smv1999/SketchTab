@@ -1,10 +1,12 @@
 package com.programmersgateway.sm1999.sketchtab;
 
 import androidx.annotation.NonNull;
+import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.viewpager.widget.ViewPager;
 
 import android.content.Context;
+import android.content.DialogInterface;
 import android.content.Intent;
 import android.graphics.Bitmap;
 import android.graphics.Canvas;
@@ -29,6 +31,7 @@ import com.google.android.gms.ads.MobileAds;
 import com.google.android.gms.ads.initialization.InitializationStatus;
 import com.google.android.gms.ads.initialization.OnInitializationCompleteListener;
 import com.google.android.material.bottomnavigation.BottomNavigationView;
+import com.google.android.material.floatingactionbutton.FloatingActionButton;
 
 import java.io.FileOutputStream;
 
@@ -39,7 +42,6 @@ public class MainActivity extends AppCompatActivity {
     MainActivity.DrawingView dv;
     private Paint mPaint;
     int initialColor;
-    private static final int MY_PERMISSIONS_REQUEST_READ_EXTERNAL_STORAGE = 1;
 
     FileOutputStream fos = null;
 
@@ -73,6 +75,8 @@ public class MainActivity extends AppCompatActivity {
         mPaint.setStrokeJoin(Paint.Join.ROUND);
         mPaint.setStrokeCap(Paint.Cap.ROUND);
         mPaint.setStrokeWidth(12);
+
+
 
     }
 
@@ -165,14 +169,11 @@ public class MainActivity extends AppCompatActivity {
         }
 
         public Bitmap getBitmap() {
-            //this.measure(100, 100);
-            //this.layout(0, 0, 100, 100);
+
             this.setDrawingCacheEnabled(true);
             this.buildDrawingCache();
             Bitmap bmp = Bitmap.createBitmap(this.getDrawingCache());
             this.setDrawingCacheEnabled(false);
-
-
             return bmp;
         }
     }
@@ -238,29 +239,26 @@ public class MainActivity extends AppCompatActivity {
 
         return super.onOptionsItemSelected(item);
     }
-    public void takeScreenshot(){
-        Bitmap bitmap = getScreenBitmap(); // Get the bitmap
-        saveTheBitmap(bitmap);               // Save it to the external storage device.
+
+    @Override
+    public void onBackPressed() {
+        new AlertDialog.Builder(context)
+                .setTitle("Save or Exit")
+                .setMessage("Are you sure you want to exit without saving?")
+
+                .setPositiveButton("YES", new DialogInterface.OnClickListener() {
+                    public void onClick(DialogInterface dialog, int which) {
+                        MainActivity.this.finish();
+                    }
+                })
+
+                .setNegativeButton("No, I want to Save", new DialogInterface.OnClickListener() {
+                    @Override
+                    public void onClick(DialogInterface dialog, int which) {
+                    }
+                })
+                .setIcon(android.R.drawable.ic_dialog_alert)
+                .show();
+
     }
-
-    private void saveTheBitmap(Bitmap bitmap) {
-
-        sendBroadcast(new Intent(Intent.ACTION_MEDIA_MOUNTED, Uri.parse("file://" + Environment.getExternalStorageDirectory())));
-
-    }
-
-    public Bitmap getScreenBitmap() {
-        View v= findViewById(android.R.id.content).getRootView();
-        v.setDrawingCacheEnabled(true);
-        v.measure(View.MeasureSpec.makeMeasureSpec(0, View.MeasureSpec.UNSPECIFIED),
-                View.MeasureSpec.makeMeasureSpec(0, View.MeasureSpec.UNSPECIFIED));
-        v.layout(0, 0, v.getMeasuredWidth(), v.getMeasuredHeight());
-
-        v.buildDrawingCache(true);
-        Bitmap b = Bitmap.createBitmap(v.getDrawingCache());
-        v.setDrawingCacheEnabled(false); // clear drawing cache
-        return b;
-    }
-
-
 }
