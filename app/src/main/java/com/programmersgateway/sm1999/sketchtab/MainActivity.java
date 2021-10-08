@@ -3,19 +3,28 @@ package com.programmersgateway.sm1999.sketchtab;
 import androidx.annotation.NonNull;
 import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.core.app.ActivityCompat;
 import androidx.viewpager.widget.ViewPager;
 
+import android.Manifest;
+import android.app.Activity;
+import android.content.ContentValues;
 import android.content.Context;
 import android.content.DialogInterface;
 import android.content.Intent;
+import android.content.pm.PackageManager;
 import android.graphics.Bitmap;
 import android.graphics.Canvas;
 import android.graphics.Color;
 import android.graphics.Paint;
 import android.graphics.Path;
+import android.graphics.Rect;
+import android.media.MediaScannerConnection;
 import android.net.Uri;
+import android.os.Build;
 import android.os.Bundle;
 import android.os.Environment;
+import android.provider.MediaStore;
 import android.util.Log;
 import android.view.Menu;
 import android.view.MenuItem;
@@ -33,7 +42,12 @@ import com.google.android.gms.ads.initialization.OnInitializationCompleteListene
 import com.google.android.material.bottomnavigation.BottomNavigationView;
 import com.google.android.material.floatingactionbutton.FloatingActionButton;
 
+import java.io.File;
+import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
+import java.io.IOException;
+import java.io.OutputStream;
+import java.util.Random;
 
 import yuku.ambilwarna.AmbilWarnaDialog;
 
@@ -55,6 +69,12 @@ public class MainActivity extends AppCompatActivity {
     Context context;
     private Paint circlePaint;
     private Path circlePath;
+    private static final int REQUEST_EXTERNAL_STORAGE = 1;
+    private static String[] PERMISSIONS_STORAGE = {
+            Manifest.permission.READ_EXTERNAL_STORAGE,
+            Manifest.permission.WRITE_EXTERNAL_STORAGE
+    };
+    private boolean isSaved = false;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -77,8 +97,8 @@ public class MainActivity extends AppCompatActivity {
         mPaint.setStrokeWidth(12);
 
 
-
     }
+
 
     public class DrawingView extends View {
 
@@ -168,14 +188,20 @@ public class MainActivity extends AppCompatActivity {
             return true;
         }
 
-        public Bitmap getBitmap() {
+    }
 
-            this.setDrawingCacheEnabled(true);
-            this.buildDrawingCache();
-            Bitmap bmp = Bitmap.createBitmap(this.getDrawingCache());
-            this.setDrawingCacheEnabled(false);
-            return bmp;
-        }
+    public Bitmap getBitmap(View view) {
+
+//        this.setDrawingCacheEnabled(true);
+//        this.buildDrawingCache();
+//        Bitmap bmp = Bitmap.createBitmap(this.getDrawingCache());
+//        this.setDrawingCacheEnabled(false);
+//        return bmp;
+        Bitmap bitmap = Bitmap.createBitmap(view.getWidth(), view.getHeight(), Bitmap.Config.ARGB_8888);
+        Canvas canvas = new Canvas(bitmap);
+        canvas.setBitmap(bitmap);
+        view.draw(canvas);
+        return bitmap;
     }
 
     @Override
@@ -192,7 +218,6 @@ public class MainActivity extends AppCompatActivity {
         // as you specify a parent activity in AndroidManifest.xml.
         int id = item.getItemId();
 
-        //noinspection SimplifiableIfStatement
         if (id == R.id.action_name) {
             final AmbilWarnaDialog dialog = new AmbilWarnaDialog(this, initialColor, new AmbilWarnaDialog.OnAmbilWarnaListener() {
                 @Override
@@ -220,6 +245,7 @@ public class MainActivity extends AppCompatActivity {
         if (id == R.id.delete) {
             mCanvas.drawColor(Color.WHITE);
             mPaint.setColor(initialColor);
+            isSaved = false;
         }
         if (id == R.id.brush) {
             mPaint.setStyle(Paint.Style.STROKE);
@@ -236,29 +262,136 @@ public class MainActivity extends AppCompatActivity {
             mPaint.setStrokeWidth(10);
             mPaint.setColor(initialColor);
         }
+        if (id == R.id.action_save) {
+            verifyStoragePermissions(MainActivity.this);
+            saveImageToGallery(getBitmap(dv));
+        }
 
         return super.onOptionsItemSelected(item);
     }
 
+    private ContentValues contentValues() {
+        ContentValues values = new ContentValues();
+        values.put(MediaStore.Images.Media.MIME_TYPE, "image/png");
+        values.put(MediaStore.Images.Media.DATE_ADDED, System.currentTimeMillis() / 1000);
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            values.put(MediaStore.Images.Media.DATE_TAKEN, System.currentTimeMillis());
+        }
+        return values;
+    }
+
+    private void saveImageToStream(Bitmap bitmap, OutputStream outputStream) {
+        if (outputStream != null) {
+            try {
+                bitmap.compress(Bitmap.CompressFormat.PNG, 100, outputStream);
+                outputStream.close();
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+        }
+    }
+
+    public static void verifyStoragePermissions(Activity activity) {
+        // Check if we have write permission
+        int permission = ActivityCompat.checkSelfPermission(activity, Manifest.permission.WRITE_EXTERNAL_STORAGE);
+
+        if (permission != PackageManager.PERMISSION_GRANTED) {
+            // We don't have permission so prompt the user
+            ActivityCompat.requestPermissions(
+                    activity,
+                    PERMISSIONS_STORAGE,
+                    REQUEST_EXTERNAL_STORAGE
+            );
+        }
+    }
+
+    public void saveImageToGallery(Bitmap bitmap) {
+        if (android.os.Build.VERSION.SDK_INT >= 29) {
+            ContentValues values = contentValues();
+            values.put(MediaStore.Images.Media.RELATIVE_PATH, "Pictures/" + getString(R.string.app_name));
+            values.put(MediaStore.Images.Media.IS_PENDING, true);
+
+            Uri uri = MainActivity.this.getContentResolver().insert(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, values);
+            if (uri != null) {
+                try {
+                    saveImageToStream(bitmap, MainActivity.this.getContentResolver().openOutputStream(uri));
+                    values.put(MediaStore.Images.Media.IS_PENDING, false);
+                    MainActivity.this.getContentResolver().update(uri, values, null, null);
+                    isSaved = true;
+                    Toast.makeText(context, "Image Saved to Gallery Successfully!", Toast.LENGTH_SHORT).show();
+                } catch (FileNotFoundException e) {
+                    e.printStackTrace();
+                }
+
+            }
+        } else {
+            File directory = new File(Environment.getExternalStorageDirectory().toString() + '/' + getString(R.string.app_name));
+
+            if (!directory.exists()) {
+                directory.mkdirs();
+            }
+            String fileName = System.currentTimeMillis() + ".png";
+            File file = new File(directory, fileName);
+            try {
+                saveImageToStream(bitmap, new FileOutputStream(file));
+                ContentValues values = new ContentValues();
+                values.put(MediaStore.Images.Media.DATA, file.getAbsolutePath());
+                MainActivity.this.getContentResolver().insert(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, values);
+                isSaved = true;
+                Toast.makeText(context, "Image Saved to Gallery Successfully!", Toast.LENGTH_SHORT).show();
+
+            } catch (FileNotFoundException e) {
+                e.printStackTrace();
+            }
+
+        }
+    }
+
     @Override
     public void onBackPressed() {
-        new AlertDialog.Builder(context)
-                .setTitle("Save or Exit")
-                .setMessage("Are you sure you want to exit without saving?")
+        if (!isSaved) {
+            new AlertDialog.Builder(context)
+                    .setTitle("Save / Exit Wizard")
+                    .setMessage("Are you sure you want to exit without saving?")
 
-                .setPositiveButton("YES", new DialogInterface.OnClickListener() {
-                    public void onClick(DialogInterface dialog, int which) {
-                        MainActivity.this.finish();
-                    }
-                })
+                    .setPositiveButton("Yes", new DialogInterface.OnClickListener() {
+                        public void onClick(DialogInterface dialog, int which) {
+                            MainActivity.this.finish();
+                        }
+                    })
 
-                .setNegativeButton("No, I want to Save", new DialogInterface.OnClickListener() {
-                    @Override
-                    public void onClick(DialogInterface dialog, int which) {
-                    }
-                })
-                .setIcon(android.R.drawable.ic_dialog_alert)
-                .show();
+                    .setNegativeButton("No, Save and Exit", new DialogInterface.OnClickListener() {
+                        @Override
+                        public void onClick(DialogInterface dialog, int which) {
+                            // Logic for Saving the Painting
+                            verifyStoragePermissions(MainActivity.this);
 
+                            saveImageToGallery(getBitmap(dv));
+                            MainActivity.this.finish();
+
+                        }
+                    })
+                    .show();
+        }
+        else {
+            new AlertDialog.Builder(context)
+                    .setTitle("Exit Wizard")
+                    .setMessage("Are you sure you want to exit?")
+
+                    .setPositiveButton("Yes", new DialogInterface.OnClickListener() {
+                        public void onClick(DialogInterface dialog, int which) {
+                            MainActivity.this.finish();
+                        }
+                    })
+
+                    .setNegativeButton("No", new DialogInterface.OnClickListener() {
+                        @Override
+                        public void onClick(DialogInterface dialog, int which) {
+
+
+                        }
+                    })
+                    .show();
+        }
     }
 }

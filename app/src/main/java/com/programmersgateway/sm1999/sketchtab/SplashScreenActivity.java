@@ -9,7 +9,6 @@ import androidx.appcompat.app.AppCompatActivity;
 
 public class SplashScreenActivity extends AppCompatActivity {
 
-    private static int SPLASH_SCREEN_TIME_OUT=1000;
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -23,6 +22,7 @@ public class SplashScreenActivity extends AppCompatActivity {
         setContentView(R.layout.activity_splash);
         //this will bind your MainActivity.class file with activity_main.
 
+        int SPLASH_SCREEN_TIME_OUT = 1000;
         new Handler().postDelayed(new Runnable() {
             @Override
             public void run() {

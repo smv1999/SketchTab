@@ -27,7 +27,7 @@
         android:id="@+id/delete"
         android:icon="@drawable/ic_delete"
         android:title="Clear Screen"
-        app:showAsAction="always"
+        app:showAsAction="ifRoom"
         android:orderInCategory="0"/>
 
     <item
@@ -35,6 +35,13 @@
         android:icon="@drawable/colorgrid"
         android:title="Color Picker"
         app:showAsAction="always"
+        android:orderInCategory="0"/>
+
+    <item
+        android:id="@+id/action_save"
+        android:icon="@drawable/ic_save"
+        android:title="Save"
+        app:showAsAction="ifRoom"
         android:orderInCategory="0"/>
 
 </menu>
