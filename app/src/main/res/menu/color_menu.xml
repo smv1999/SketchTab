@@ -9,6 +9,7 @@
         android:title="Pen"
         app:showAsAction="always"
         android:orderInCategory="0"/>
+
     <item
         android:id="@+id/brush"
         android:icon="@drawable/ic_brush"
@@ -17,10 +18,24 @@
         android:orderInCategory="0"/>
 
     <item
+        android:id="@+id/undo"
+        android:icon="@drawable/ic_undo"
+        android:title="Undo"
+        app:showAsAction="always"
+        android:orderInCategory="0"/>
+
+    <item
+        android:id="@+id/redo"
+        android:icon="@drawable/ic_redo"
+        android:title="Redo"
+        app:showAsAction="always"
+        android:orderInCategory="0"/>
+
+    <item
         android:id="@+id/clear"
         android:icon="@drawable/ic_eraser"
         android:title="Eraser"
-        app:showAsAction="always"
+        app:showAsAction="ifRoom"
         android:orderInCategory="0"/>
 
     <item
@@ -35,6 +50,13 @@
         android:icon="@drawable/colorgrid"
         android:title="Color Picker"
         app:showAsAction="always"
+        android:orderInCategory="0"/>
+
+    <item
+        android:id="@+id/action_shapes"
+        android:icon="@drawable/ic_save"
+        android:title="Shapes"
+        app:showAsAction="ifRoom"
         android:orderInCategory="0"/>
 
     <item

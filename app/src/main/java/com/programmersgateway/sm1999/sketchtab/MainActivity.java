@@ -18,6 +18,7 @@ import android.graphics.Canvas;
 import android.graphics.Color;
 import android.graphics.Paint;
 import android.graphics.Path;
+import android.graphics.Point;
 import android.graphics.Rect;
 import android.media.MediaScannerConnection;
 import android.net.Uri;
@@ -30,6 +31,11 @@ import android.view.Menu;
 import android.view.MenuItem;
 import android.view.MotionEvent;
 import android.view.View;
+import android.widget.AdapterView;
+import android.widget.ArrayAdapter;
+import android.widget.EditText;
+import android.widget.LinearLayout;
+import android.widget.Spinner;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -47,6 +53,7 @@ import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.OutputStream;
+import java.util.ArrayList;
 import java.util.Random;
 
 import yuku.ambilwarna.AmbilWarnaDialog;
@@ -101,7 +108,8 @@ public class MainActivity extends AppCompatActivity {
 
 
     public class DrawingView extends View {
-
+        private ArrayList<Path> paths = new ArrayList<Path>();
+        private ArrayList<Path> undonePaths = new ArrayList<Path>();
 
         public DrawingView(Context c) {
             super(c);
@@ -130,14 +138,19 @@ public class MainActivity extends AppCompatActivity {
             super.onDraw(canvas);
 
             canvas.drawBitmap(mBitmap, 0, 0, mBitmapPaint);
+            for (Path p : paths){
+                canvas.drawPath(p, mPaint);
+            }
             canvas.drawPath(mPath, mPaint);
             canvas.drawPath(circlePath, circlePaint);
+
         }
 
         private float mX, mY;
         private static final float TOUCH_TOLERANCE = 4;
 
         private void touch_start(float x, float y) {
+            undonePaths.clear();
             mPath.reset();
             mPath.moveTo(x, y);
             mX = x;
@@ -163,6 +176,8 @@ public class MainActivity extends AppCompatActivity {
             // commit the path to our offscreen
             mCanvas.drawPath(mPath, mPaint);
             // kill this so we don't double draw
+            paths.add(mPath);
+            mPath = new Path();
             mPath.reset();
         }
 
@@ -173,6 +188,7 @@ public class MainActivity extends AppCompatActivity {
 
             switch (event.getAction()) {
                 case MotionEvent.ACTION_DOWN:
+                    undonePaths.clear();
                     touch_start(x, y);
                     invalidate();
                     break;
@@ -188,15 +204,36 @@ public class MainActivity extends AppCompatActivity {
             return true;
         }
 
+        public void onClickUndo () {
+            if (paths.size()>0)
+            {
+                undonePaths.add(paths.remove(paths.size()-1));
+                dv.invalidate();
+            }
+            else
+            {
+
+            }
+            //toast the user
+        }
+
+        public void onClickRedo (){
+            if (undonePaths.size()>0)
+            {
+                paths.add(undonePaths.remove(undonePaths.size()-1));
+                dv.invalidate();
+            }
+            else
+            {
+
+            }
+            //toast the user
+        }
+
     }
 
     public Bitmap getBitmap(View view) {
 
-//        this.setDrawingCacheEnabled(true);
-//        this.buildDrawingCache();
-//        Bitmap bmp = Bitmap.createBitmap(this.getDrawingCache());
-//        this.setDrawingCacheEnabled(false);
-//        return bmp;
         Bitmap bitmap = Bitmap.createBitmap(view.getWidth(), view.getHeight(), Bitmap.Config.ARGB_8888);
         Canvas canvas = new Canvas(bitmap);
         canvas.setBitmap(bitmap);
@@ -266,8 +303,97 @@ public class MainActivity extends AppCompatActivity {
             verifyStoragePermissions(MainActivity.this);
             saveImageToGallery(getBitmap(dv));
         }
+        if (id == R.id.undo) {
+            dv.onClickUndo();
+        }
+        if (id == R.id.redo) {
+            dv.onClickRedo();
+        }
+        if (id == R.id.action_shapes) {
+            showShapesDialog();
+        }
 
         return super.onOptionsItemSelected(item);
+    }
+
+    private void drawCircle() {
+        mCanvas.drawCircle(dv.getWidth() / 2, dv.getHeight() / 2, 80, mPaint);
+    }
+
+    private void drawRectangle(int inputWidth, int inputHeight) {
+
+        int top = dv.getHeight() / 2 - 50;
+        int left = dv.getWidth() / 4 + 100;
+        mCanvas.drawRect(new Rect(left, top, left + inputWidth, top + inputHeight), mPaint);
+
+    }
+
+    private void drawSquare(int side) {
+        int top = dv.getHeight() / 2 - 50;
+        int left = dv.getWidth() / 4 + 100;
+        mCanvas.drawRect(new Rect(left, top, left + side, top + side), mPaint);
+    }
+
+    private void drawTriangle() {
+        Point point1_draw = new Point(100, dv.getHeight() / 2); //LB - A
+        Point point2_draw = new Point(500, dv.getHeight() / 2); //RB - B
+        Point point3_draw = new Point((point1_draw.x + point2_draw.x) / 2, 200); //TOP - C
+
+        Path path = new Path();
+        path.setFillType(Path.FillType.EVEN_ODD);
+        path.moveTo(point1_draw.x, point1_draw.y);
+        path.lineTo(point2_draw.x, point2_draw.y);
+        path.lineTo(point3_draw.x, point3_draw.y);
+        path.lineTo(point1_draw.x, point1_draw.y);
+        path.close();
+
+        mCanvas.drawPath(path, mPaint);
+    }
+
+    private void showShapesDialog() {
+        String[] shapes = {"No shape selected", "Circle", "Square", "Rectangle", "Triangle"};
+        final ArrayAdapter<String> shapesAdapter = new ArrayAdapter<String>(MainActivity.this, android.R.layout.simple_spinner_dropdown_item, shapes);
+
+        final Spinner shapesDropdown = new Spinner(MainActivity.this);
+        final LinearLayout.LayoutParams dialogLayoutParams = new LinearLayout.LayoutParams(ViewPager.LayoutParams.MATCH_PARENT, ViewPager.LayoutParams.MATCH_PARENT);
+        shapesDropdown.setLayoutParams(dialogLayoutParams);
+        shapesDropdown.setPadding(30, 30, 30, 30);
+        shapesDropdown.setAdapter(shapesAdapter);
+
+        shapesDropdown.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
+            @Override
+            public void onItemSelected(AdapterView<?> parent, View view, int position, long id) {
+                if (shapesDropdown.getSelectedItem().toString().equals("Circle")) {
+                    EditText radius = new EditText(MainActivity.this);
+                    radius.setLayoutParams(dialogLayoutParams);
+
+                    drawCircle();
+
+                } else if (shapesDropdown.getSelectedItem().toString().equals("Rectangle")) {
+
+                    drawRectangle(100, 200);
+                } else if (shapesDropdown.getSelectedItem().toString().equals("Square")) {
+                    drawSquare(100);
+                } else if (shapesDropdown.getSelectedItem().toString().equals("Triangle")) {
+                    drawTriangle();
+                }
+            }
+
+            @Override
+            public void onNothingSelected(AdapterView<?> parent) {
+
+            }
+        });
+
+        AlertDialog.Builder builder = new AlertDialog.Builder(MainActivity.this);
+        builder.setTitle("Select a Shape to Draw");
+        builder.setMessage("Select a shape from the dropdown to draw on the canvas.");
+        builder.setView(shapesDropdown);
+        AlertDialog dialog = builder.create();
+        dialog.show();
+        dialog.getWindow().setLayout(650, 500);
+
+
     }
 
     private ContentValues contentValues() {
@@ -304,6 +430,9 @@ public class MainActivity extends AppCompatActivity {
             );
         }
     }
+
+
+
 
     public void saveImageToGallery(Bitmap bitmap) {
         if (android.os.Build.VERSION.SDK_INT >= 29) {
@@ -372,8 +501,7 @@ public class MainActivity extends AppCompatActivity {
                         }
                     })
                     .show();
-        }
-        else {
+        } else {
             new AlertDialog.Builder(context)
                     .setTitle("Exit Wizard")
                     .setMessage("Are you sure you want to exit?")
