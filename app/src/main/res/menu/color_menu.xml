@@ -35,7 +35,7 @@
         android:id="@+id/clear"
         android:icon="@drawable/ic_eraser"
         android:title="Eraser"
-        app:showAsAction="ifRoom"
+        app:showAsAction="always"
         android:orderInCategory="0"/>
 
     <item

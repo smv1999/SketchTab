@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <item name="radius" type="id"/>
+    <item name="side" type="id"/>
+    <item name="length" type="id"/>
+    <item name="breadth" type="id"/>
+    <item name="shapesdropdown" type="id"/>
+    <item name="submit" type="id"/>
+
+</resources>

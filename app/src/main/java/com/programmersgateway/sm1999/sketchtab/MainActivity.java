@@ -26,15 +26,22 @@ import android.os.Build;
 import android.os.Bundle;
 import android.os.Environment;
 import android.provider.MediaStore;
+import android.text.InputType;
 import android.util.Log;
+import android.view.Gravity;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.MotionEvent;
 import android.view.View;
+import android.view.WindowManager;
+import android.view.inputmethod.InputMethodManager;
 import android.widget.AdapterView;
 import android.widget.ArrayAdapter;
+import android.widget.Button;
 import android.widget.EditText;
 import android.widget.LinearLayout;
+import android.widget.RelativeLayout;
+import android.widget.ScrollView;
 import android.widget.Spinner;
 import android.widget.TextView;
 import android.widget.Toast;
@@ -76,12 +83,16 @@ public class MainActivity extends AppCompatActivity {
     Context context;
     private Paint circlePaint;
     private Path circlePath;
+    Boolean newAdded = false;
+    Boolean allClear = false;
     private static final int REQUEST_EXTERNAL_STORAGE = 1;
     private static String[] PERMISSIONS_STORAGE = {
             Manifest.permission.READ_EXTERNAL_STORAGE,
             Manifest.permission.WRITE_EXTERNAL_STORAGE
     };
     private boolean isSaved = false;
+    private ArrayList<Bitmap> bitmap = new ArrayList<>();
+    private ArrayList<Bitmap> undoBitmap = new ArrayList<>();
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -90,7 +101,8 @@ public class MainActivity extends AppCompatActivity {
         dv.setBackgroundColor(Color.WHITE);
         setContentView(dv);
 
-        getSupportActionBar().setTitle("Sketch");
+        if (getSupportActionBar() != null)
+            getSupportActionBar().setTitle("");
 
         mPaint = new Paint();
         mPaint.setAntiAlias(true);
@@ -108,8 +120,6 @@ public class MainActivity extends AppCompatActivity {
 
 
     public class DrawingView extends View {
-        private ArrayList<Path> paths = new ArrayList<Path>();
-        private ArrayList<Path> undonePaths = new ArrayList<Path>();
 
         public DrawingView(Context c) {
             super(c);
@@ -138,9 +148,6 @@ public class MainActivity extends AppCompatActivity {
             super.onDraw(canvas);
 
             canvas.drawBitmap(mBitmap, 0, 0, mBitmapPaint);
-            for (Path p : paths){
-                canvas.drawPath(p, mPaint);
-            }
             canvas.drawPath(mPath, mPaint);
             canvas.drawPath(circlePath, circlePaint);
 
@@ -150,7 +157,6 @@ public class MainActivity extends AppCompatActivity {
         private static final float TOUCH_TOLERANCE = 4;
 
         private void touch_start(float x, float y) {
-            undonePaths.clear();
             mPath.reset();
             mPath.moveTo(x, y);
             mX = x;
@@ -176,8 +182,6 @@ public class MainActivity extends AppCompatActivity {
             // commit the path to our offscreen
             mCanvas.drawPath(mPath, mPaint);
             // kill this so we don't double draw
-            paths.add(mPath);
-            mPath = new Path();
             mPath.reset();
         }
 
@@ -188,7 +192,10 @@ public class MainActivity extends AppCompatActivity {
 
             switch (event.getAction()) {
                 case MotionEvent.ACTION_DOWN:
-                    undonePaths.clear();
+                    newAdded = true;
+                    if (!allClear)
+                        bitmap.add(mBitmap.copy(mBitmap.getConfig(), mBitmap.isMutable()));
+                    else allClear = false;
                     touch_start(x, y);
                     invalidate();
                     break;
@@ -204,27 +211,31 @@ public class MainActivity extends AppCompatActivity {
             return true;
         }
 
-        public void onClickUndo () {
-            if (paths.size()>0)
-            {
-                undonePaths.add(paths.remove(paths.size()-1));
-                dv.invalidate();
+        public void onClickUndo() {
+            if (newAdded) {
+                bitmap.add(mBitmap.copy(mBitmap.getConfig(), mBitmap.isMutable()));
+                newAdded = false;
             }
-            else
-            {
+            if (bitmap.size() > 1) {
+                undoBitmap.add(bitmap.remove(bitmap.size() - 1));
+                mBitmap = bitmap.get(bitmap.size() - 1).copy(mBitmap.getConfig(), mBitmap.isMutable());
+                mCanvas = new Canvas(mBitmap);
+                invalidate();
+                if (bitmap.size() == 1)
+                    allClear = true;
+            } else {
 
             }
             //toast the user
         }
 
-        public void onClickRedo (){
-            if (undonePaths.size()>0)
-            {
-                paths.add(undonePaths.remove(undonePaths.size()-1));
-                dv.invalidate();
-            }
-            else
-            {
+        public void onClickRedo() {
+            if (undoBitmap.size() > 0) {
+                bitmap.add(undoBitmap.remove(undoBitmap.size() - 1));
+                mBitmap = bitmap.get(bitmap.size() - 1).copy(mBitmap.getConfig(), mBitmap.isMutable());
+                mCanvas = new Canvas(mBitmap);
+                invalidate();
+            } else {
 
             }
             //toast the user
@@ -316,8 +327,8 @@ public class MainActivity extends AppCompatActivity {
         return super.onOptionsItemSelected(item);
     }
 
-    private void drawCircle() {
-        mCanvas.drawCircle(dv.getWidth() / 2, dv.getHeight() / 2, 80, mPaint);
+    private void drawCircle(int radius) {
+        mCanvas.drawCircle(dv.getWidth() / 2, dv.getHeight() / 2, radius, mPaint);
     }
 
     private void drawRectangle(int inputWidth, int inputHeight) {
@@ -355,28 +366,184 @@ public class MainActivity extends AppCompatActivity {
         final ArrayAdapter<String> shapesAdapter = new ArrayAdapter<String>(MainActivity.this, android.R.layout.simple_spinner_dropdown_item, shapes);
 
         final Spinner shapesDropdown = new Spinner(MainActivity.this);
+        final ScrollView scrollView = new ScrollView(MainActivity.this);
+        final LinearLayout layout = new LinearLayout(MainActivity.this);
         final LinearLayout.LayoutParams dialogLayoutParams = new LinearLayout.LayoutParams(ViewPager.LayoutParams.MATCH_PARENT, ViewPager.LayoutParams.MATCH_PARENT);
-        shapesDropdown.setLayoutParams(dialogLayoutParams);
+        dialogLayoutParams.setMargins(20, 10, 20, 10);
+        shapesDropdown.setId(R.id.shapesdropdown);
         shapesDropdown.setPadding(30, 30, 30, 30);
+        shapesDropdown.setBackground(getDrawable(R.drawable.gradient_spinner));
         shapesDropdown.setAdapter(shapesAdapter);
+        layout.setOrientation(LinearLayout.VERTICAL);
+        layout.setLayoutParams(dialogLayoutParams);
+        layout.setGravity(Gravity.CENTER_HORIZONTAL | Gravity.END);
+        layout.addView(shapesDropdown, dialogLayoutParams);
+        scrollView.addView(layout);
+
+        AlertDialog.Builder builder = new AlertDialog.Builder(MainActivity.this);
+        builder.setTitle("Select a Shape to Draw");
+        builder.setMessage("Select a shape from the dropdown to draw on the canvas.");
+        builder.setView(scrollView);
+        final AlertDialog dialog = builder.create();
+        dialog.show();
+        if (dialog.getWindow() != null) {
+            dialog.getWindow().setBackgroundDrawableResource(R.drawable.dialog_bg);
+            dialog.getWindow().clearFlags(WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE | WindowManager.LayoutParams.FLAG_ALT_FOCUSABLE_IM);
+            dialog.getWindow().setSoftInputMode(WindowManager.LayoutParams.SOFT_INPUT_STATE_ALWAYS_VISIBLE);
+            dialog.getWindow().setLayout(650, 600);
+        }
+
 
         shapesDropdown.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
             @Override
             public void onItemSelected(AdapterView<?> parent, View view, int position, long id) {
                 if (shapesDropdown.getSelectedItem().toString().equals("Circle")) {
-                    EditText radius = new EditText(MainActivity.this);
-                    radius.setLayoutParams(dialogLayoutParams);
+                    layout.removeAllViewsInLayout();
+                    layout.invalidate();
+                    layout.addView(shapesDropdown, dialogLayoutParams);
+                    dialog.getWindow().setLayout(650, 700);
 
-                    drawCircle();
+
+                    final EditText radius = new EditText(MainActivity.this);
+                    radius.setVisibility(View.VISIBLE);
+                    radius.setPadding(30, 30, 30, 30);
+                    radius.setHint("Enter a radius");
+                    radius.setInputType(InputType.TYPE_CLASS_NUMBER);
+                    radius.requestFocus();
+                    radius.setId(R.id.radius);
+                    layout.addView(radius, dialogLayoutParams);
+
+                    Button submit = new Button(MainActivity.this);
+                    submit.setText(R.string.submit);
+                    submit.setBackgroundColor(getResources().getColor(R.color.colorPrimary));
+                    submit.setVisibility(View.VISIBLE);
+                    submit.setPadding(30, 30, 30, 30);
+                    submit.setId(R.id.submit);
+                    layout.addView(submit, dialogLayoutParams);
+
+                    submit.setOnClickListener(new View.OnClickListener() {
+                        @Override
+                        public void onClick(View v) {
+                            if (!radius.getText().toString().equals("")) {
+                                if (Integer.parseInt(radius.getText().toString()) <= 350) {
+                                    drawCircle(Integer.parseInt(radius.getText().toString()));
+                                    dialog.dismiss();
+                                } else {
+                                    radius.setError("Circle with given radius exceeds the bounds of visible screen. Please give a valid radius.");
+                                }
+                            } else
+                                radius.setError("Please enter a radius");
+                        }
+                    });
+
 
                 } else if (shapesDropdown.getSelectedItem().toString().equals("Rectangle")) {
+                    layout.removeAllViewsInLayout();
+                    layout.invalidate();
+                    layout.addView(shapesDropdown, dialogLayoutParams);
+                    dialog.getWindow().setLayout(650, 800);
 
-                    drawRectangle(100, 200);
+
+                    final EditText length = new EditText(MainActivity.this);
+                    length.setVisibility(View.VISIBLE);
+                    length.setPadding(30, 30, 30, 30);
+                    length.setHint("Enter length");
+                    length.setInputType(InputType.TYPE_CLASS_NUMBER);
+                    length.requestFocus();
+                    length.setId(R.id.length);
+                    layout.addView(length, dialogLayoutParams);
+
+                    final EditText breadth = new EditText(MainActivity.this);
+                    breadth.setVisibility(View.VISIBLE);
+                    breadth.setPadding(30, 30, 30, 30);
+                    breadth.setHint("Enter breadth");
+                    breadth.setInputType(InputType.TYPE_CLASS_NUMBER);
+                    breadth.requestFocus();
+                    breadth.setId(R.id.breadth);
+                    layout.addView(breadth, dialogLayoutParams);
+
+                    Button submit = new Button(MainActivity.this);
+                    submit.setText(R.string.submit);
+                    submit.setBackgroundColor(getResources().getColor(R.color.colorPrimary));
+                    submit.setVisibility(View.VISIBLE);
+                    submit.setPadding(30, 30, 30, 30);
+                    submit.setId(R.id.submit);
+                    layout.addView(submit, dialogLayoutParams);
+
+                    submit.setOnClickListener(new View.OnClickListener() {
+                        @Override
+                        public void onClick(View v) {
+                            if (!length.getText().toString().equals("") && !breadth.getText().toString().equals("")) {
+                                if (Integer.parseInt(length.getText().toString()) <= 400 && Integer.parseInt(breadth.getText().toString()) <= 600) {
+                                    drawRectangle(Integer.parseInt(length.getText().toString()), Integer.parseInt(breadth.getText().toString()));
+                                    dialog.dismiss();
+                                } else {
+                                    length.setError("Given sides exceeds the bounds of visible screen. Please give valid sides.");
+                                    breadth.setError("Given sides exceeds the bounds of visible screen. Please give valid sides.");
+
+                                }
+                            }
+                            else if(length.getText().toString().equals("") && !breadth.getText().toString().equals("")) {
+                                length.setError("Please enter length");
+                            }
+                            else if(breadth.getText().toString().equals("") && !length.getText().toString().equals("")) {
+                                breadth.setError("Please enter breadth");
+                            }
+                            else {
+                                length.setError("Please enter length");
+                                breadth.setError("Please enter breadth");
+                            }
+
+                        }
+                    });
+
                 } else if (shapesDropdown.getSelectedItem().toString().equals("Square")) {
-                    drawSquare(100);
+                    layout.removeAllViewsInLayout();
+                    layout.invalidate();
+                    layout.addView(shapesDropdown, dialogLayoutParams);
+                    dialog.getWindow().setLayout(650, 700);
+
+
+                    final EditText side = new EditText(MainActivity.this);
+                    side.setVisibility(View.VISIBLE);
+                    side.setPadding(30, 30, 30, 30);
+                    side.setHint("Enter a side");
+                    side.setInputType(InputType.TYPE_CLASS_NUMBER);
+                    side.requestFocus();
+                    side.setId(R.id.side);
+                    layout.addView(side, dialogLayoutParams);
+
+                    Button submit = new Button(MainActivity.this);
+                    submit.setText(R.string.submit);
+                    submit.setBackgroundColor(getResources().getColor(R.color.colorPrimary));
+                    submit.setVisibility(View.VISIBLE);
+                    submit.setPadding(30, 30, 30, 30);
+                    submit.setId(R.id.submit);
+                    layout.addView(submit, dialogLayoutParams);
+
+                    submit.setOnClickListener(new View.OnClickListener() {
+                        @Override
+                        public void onClick(View v) {
+                            if (!side.getText().toString().equals("")) {
+                                if (Integer.parseInt(side.getText().toString()) <= 420) {
+                                    drawSquare(Integer.parseInt(side.getText().toString()));
+                                    dialog.dismiss();
+                                } else {
+                                  side.setError("Given side exceeds the bounds of visible screen. Please give a valid side.");
+                                }
+                            } else
+                                side.setError("Please enter a side");
+                        }
+                    });
+
                 } else if (shapesDropdown.getSelectedItem().toString().equals("Triangle")) {
+                    layout.removeAllViewsInLayout();
+                    layout.invalidate();
+                    layout.addView(shapesDropdown, dialogLayoutParams);
+
                     drawTriangle();
                 }
+
             }
 
             @Override
@@ -384,14 +551,6 @@ public class MainActivity extends AppCompatActivity {
 
             }
         });
-
-        AlertDialog.Builder builder = new AlertDialog.Builder(MainActivity.this);
-        builder.setTitle("Select a Shape to Draw");
-        builder.setMessage("Select a shape from the dropdown to draw on the canvas.");
-        builder.setView(shapesDropdown);
-        AlertDialog dialog = builder.create();
-        dialog.show();
-        dialog.getWindow().setLayout(650, 500);
 
 
     }
@@ -430,8 +589,6 @@ public class MainActivity extends AppCompatActivity {
             );
         }
     }
-
-
 
 
     public void saveImageToGallery(Bitmap bitmap) {

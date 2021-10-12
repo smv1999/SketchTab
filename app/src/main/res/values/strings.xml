@@ -6,4 +6,6 @@
     <string name="title_notifications">Notifications</string>
     <string name="info">Information</string>
     <string name="app_desc">Your Art Playground</string>
+    <string name="submit">SUBMIT</string>
+
 </resources>

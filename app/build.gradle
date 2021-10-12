@@ -5,7 +5,7 @@ android {
     buildToolsVersion "29.0.2"
     defaultConfig {
         applicationId "com.programmersgateway.sm1999.sketchtab"
-        minSdkVersion 16
+        minSdkVersion 21
         targetSdkVersion 29
         versionCode 4
         versionName "1.0.3"
