@@ -6,5 +6,13 @@
     <item name="breadth" type="id"/>
     <item name="shapesdropdown" type="id"/>
     <item name="submit" type="id"/>
+    <item name="rgcircle" type="id" />
+    <item name="rgsquare" type="id" />
+    <item name="rgrectangle" type="id" />
+    <item name="rgtriangle" type="id" />
+    <item name="filled" type="id" />
+    <item name="not_filled" type="id" />
+
+
 
 </resources>

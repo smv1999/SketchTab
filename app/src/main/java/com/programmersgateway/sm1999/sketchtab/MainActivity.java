@@ -27,6 +27,7 @@ import android.os.Bundle;
 import android.os.Environment;
 import android.provider.MediaStore;
 import android.text.InputType;
+import android.util.LayoutDirection;
 import android.util.Log;
 import android.view.Gravity;
 import android.view.Menu;
@@ -38,11 +39,15 @@ import android.view.inputmethod.InputMethodManager;
 import android.widget.AdapterView;
 import android.widget.ArrayAdapter;
 import android.widget.Button;
+import android.widget.CompoundButton;
 import android.widget.EditText;
 import android.widget.LinearLayout;
+import android.widget.RadioButton;
+import android.widget.RadioGroup;
 import android.widget.RelativeLayout;
 import android.widget.ScrollView;
 import android.widget.Spinner;
+import android.widget.Switch;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -223,10 +228,7 @@ public class MainActivity extends AppCompatActivity {
                 invalidate();
                 if (bitmap.size() == 1)
                     allClear = true;
-            } else {
-
             }
-            //toast the user
         }
 
         public void onClickRedo() {
@@ -235,10 +237,7 @@ public class MainActivity extends AppCompatActivity {
                 mBitmap = bitmap.get(bitmap.size() - 1).copy(mBitmap.getConfig(), mBitmap.isMutable());
                 mCanvas = new Canvas(mBitmap);
                 invalidate();
-            } else {
-
             }
-            //toast the user
         }
 
     }
@@ -283,14 +282,14 @@ public class MainActivity extends AppCompatActivity {
             dialog.show();
             return true;
         }
-        if (id == R.id.clear) {
+        if (id == R.id.erase) {
             mPaint.setStyle(Paint.Style.STROKE);
             mPaint.setStrokeJoin(Paint.Join.ROUND);
             mPaint.setStrokeCap(Paint.Cap.ROUND);
             mPaint.setStrokeWidth(30);
             mPaint.setColor(Color.WHITE);
         }
-        if (id == R.id.delete) {
+        if (id == R.id.clear) {
             mCanvas.drawColor(Color.WHITE);
             mPaint.setColor(initialColor);
             isSaved = false;
@@ -327,25 +326,50 @@ public class MainActivity extends AppCompatActivity {
         return super.onOptionsItemSelected(item);
     }
 
-    private void drawCircle(int radius) {
+    private void drawCircle(int radius, boolean filled) {
+
+        if (filled)
+            mPaint.setStyle(Paint.Style.FILL_AND_STROKE);
+        else {
+            mPaint.setStyle(Paint.Style.STROKE);
+        }
         mCanvas.drawCircle(dv.getWidth() / 2, dv.getHeight() / 2, radius, mPaint);
+
     }
 
-    private void drawRectangle(int inputWidth, int inputHeight) {
+    private void drawRectangle(int inputWidth, int inputHeight, boolean filled) {
 
+
+        if (filled)
+            mPaint.setStyle(Paint.Style.FILL_AND_STROKE);
+        else {
+            mPaint.setStyle(Paint.Style.STROKE);
+        }
         int top = dv.getHeight() / 2 - 50;
         int left = dv.getWidth() / 4 + 100;
         mCanvas.drawRect(new Rect(left, top, left + inputWidth, top + inputHeight), mPaint);
 
     }
 
-    private void drawSquare(int side) {
+    private void drawSquare(int side, boolean filled) {
+
+        if (filled)
+            mPaint.setStyle(Paint.Style.FILL_AND_STROKE);
+        else {
+            mPaint.setStyle(Paint.Style.STROKE);
+        }
         int top = dv.getHeight() / 2 - 50;
         int left = dv.getWidth() / 4 + 100;
         mCanvas.drawRect(new Rect(left, top, left + side, top + side), mPaint);
     }
 
-    private void drawTriangle() {
+    private void drawTriangle(boolean filled) {
+
+        if (filled)
+            mPaint.setStyle(Paint.Style.FILL_AND_STROKE);
+        else {
+            mPaint.setStyle(Paint.Style.STROKE);
+        }
         Point point1_draw = new Point(100, dv.getHeight() / 2); //LB - A
         Point point2_draw = new Point(500, dv.getHeight() / 2); //RB - B
         Point point3_draw = new Point((point1_draw.x + point2_draw.x) / 2, 200); //TOP - C
@@ -401,7 +425,7 @@ public class MainActivity extends AppCompatActivity {
                     layout.removeAllViewsInLayout();
                     layout.invalidate();
                     layout.addView(shapesDropdown, dialogLayoutParams);
-                    dialog.getWindow().setLayout(650, 700);
+                    dialog.getWindow().setLayout(650, 800);
 
 
                     final EditText radius = new EditText(MainActivity.this);
@@ -413,7 +437,25 @@ public class MainActivity extends AppCompatActivity {
                     radius.setId(R.id.radius);
                     layout.addView(radius, dialogLayoutParams);
 
-                    Button submit = new Button(MainActivity.this);
+                    final RadioGroup fillColorGroup = new RadioGroup(MainActivity.this);
+                    fillColorGroup.setLayoutParams(new RadioGroup.LayoutParams(
+                            LinearLayout.LayoutParams.MATCH_PARENT,
+                            LinearLayout.LayoutParams.WRAP_CONTENT));
+                    fillColorGroup.setOrientation(LinearLayout.HORIZONTAL);
+                    fillColorGroup.setId(R.id.rgcircle);
+                    final RadioButton filled = new RadioButton(MainActivity.this);
+                    RadioButton not_filled = new RadioButton(MainActivity.this);
+                    filled.setLayoutParams(new RadioGroup.LayoutParams(RadioGroup.LayoutParams.WRAP_CONTENT, RadioGroup.LayoutParams.WRAP_CONTENT, 1f));
+                    not_filled.setLayoutParams(new RadioGroup.LayoutParams(RadioGroup.LayoutParams.WRAP_CONTENT, RadioGroup.LayoutParams.WRAP_CONTENT, 1f));
+                    filled.setId(R.id.filled);
+                    filled.setText("Filled");
+                    not_filled.setId(R.id.not_filled);
+                    not_filled.setText("Not Filled");
+                    fillColorGroup.addView(filled);
+                    fillColorGroup.addView(not_filled);
+                    layout.addView(fillColorGroup, dialogLayoutParams);
+
+                    final Button submit = new Button(MainActivity.this);
                     submit.setText(R.string.submit);
                     submit.setBackgroundColor(getResources().getColor(R.color.colorPrimary));
                     submit.setVisibility(View.VISIBLE);
@@ -421,12 +463,17 @@ public class MainActivity extends AppCompatActivity {
                     submit.setId(R.id.submit);
                     layout.addView(submit, dialogLayoutParams);
 
+
                     submit.setOnClickListener(new View.OnClickListener() {
                         @Override
                         public void onClick(View v) {
                             if (!radius.getText().toString().equals("")) {
                                 if (Integer.parseInt(radius.getText().toString()) <= 350) {
-                                    drawCircle(Integer.parseInt(radius.getText().toString()));
+                                    if (fillColorGroup.getCheckedRadioButtonId() == filled.getId()) {
+                                        drawCircle(Integer.parseInt(radius.getText().toString()), true);
+                                    } else {
+                                        drawCircle(Integer.parseInt(radius.getText().toString()), false);
+                                    }
                                     dialog.dismiss();
                                 } else {
                                     radius.setError("Circle with given radius exceeds the bounds of visible screen. Please give a valid radius.");
@@ -441,7 +488,7 @@ public class MainActivity extends AppCompatActivity {
                     layout.removeAllViewsInLayout();
                     layout.invalidate();
                     layout.addView(shapesDropdown, dialogLayoutParams);
-                    dialog.getWindow().setLayout(650, 800);
+                    dialog.getWindow().setLayout(650, 900);
 
 
                     final EditText length = new EditText(MainActivity.this);
@@ -462,7 +509,25 @@ public class MainActivity extends AppCompatActivity {
                     breadth.setId(R.id.breadth);
                     layout.addView(breadth, dialogLayoutParams);
 
-                    Button submit = new Button(MainActivity.this);
+                    final RadioGroup fillColorGroup = new RadioGroup(MainActivity.this);
+                    fillColorGroup.setLayoutParams(new RadioGroup.LayoutParams(
+                            LinearLayout.LayoutParams.MATCH_PARENT,
+                            LinearLayout.LayoutParams.WRAP_CONTENT));
+                    fillColorGroup.setOrientation(LinearLayout.HORIZONTAL);
+                    fillColorGroup.setId(R.id.rgcircle);
+                    final RadioButton filled = new RadioButton(MainActivity.this);
+                    RadioButton not_filled = new RadioButton(MainActivity.this);
+                    filled.setLayoutParams(new RadioGroup.LayoutParams(RadioGroup.LayoutParams.WRAP_CONTENT, RadioGroup.LayoutParams.WRAP_CONTENT, 1f));
+                    not_filled.setLayoutParams(new RadioGroup.LayoutParams(RadioGroup.LayoutParams.WRAP_CONTENT, RadioGroup.LayoutParams.WRAP_CONTENT, 1f));
+                    filled.setId(R.id.filled);
+                    filled.setText("Filled");
+                    not_filled.setId(R.id.not_filled);
+                    not_filled.setText("Not Filled");
+                    fillColorGroup.addView(filled);
+                    fillColorGroup.addView(not_filled);
+                    layout.addView(fillColorGroup, dialogLayoutParams);
+
+                    final Button submit = new Button(MainActivity.this);
                     submit.setText(R.string.submit);
                     submit.setBackgroundColor(getResources().getColor(R.color.colorPrimary));
                     submit.setVisibility(View.VISIBLE);
@@ -470,26 +535,28 @@ public class MainActivity extends AppCompatActivity {
                     submit.setId(R.id.submit);
                     layout.addView(submit, dialogLayoutParams);
 
+
                     submit.setOnClickListener(new View.OnClickListener() {
                         @Override
                         public void onClick(View v) {
                             if (!length.getText().toString().equals("") && !breadth.getText().toString().equals("")) {
                                 if (Integer.parseInt(length.getText().toString()) <= 400 && Integer.parseInt(breadth.getText().toString()) <= 600) {
-                                    drawRectangle(Integer.parseInt(length.getText().toString()), Integer.parseInt(breadth.getText().toString()));
+                                    if (fillColorGroup.getCheckedRadioButtonId() == filled.getId()) {
+                                        drawRectangle(Integer.parseInt(length.getText().toString()), Integer.parseInt(breadth.getText().toString()), true);
+                                    }else {
+                                        drawRectangle(Integer.parseInt(length.getText().toString()), Integer.parseInt(breadth.getText().toString()), false);
+                                    }
                                     dialog.dismiss();
                                 } else {
                                     length.setError("Given sides exceeds the bounds of visible screen. Please give valid sides.");
                                     breadth.setError("Given sides exceeds the bounds of visible screen. Please give valid sides.");
 
                                 }
-                            }
-                            else if(length.getText().toString().equals("") && !breadth.getText().toString().equals("")) {
+                            } else if (length.getText().toString().equals("") && !breadth.getText().toString().equals("")) {
                                 length.setError("Please enter length");
-                            }
-                            else if(breadth.getText().toString().equals("") && !length.getText().toString().equals("")) {
+                            } else if (breadth.getText().toString().equals("") && !length.getText().toString().equals("")) {
                                 breadth.setError("Please enter breadth");
-                            }
-                            else {
+                            } else {
                                 length.setError("Please enter length");
                                 breadth.setError("Please enter breadth");
                             }
@@ -497,11 +564,12 @@ public class MainActivity extends AppCompatActivity {
                         }
                     });
 
+
                 } else if (shapesDropdown.getSelectedItem().toString().equals("Square")) {
                     layout.removeAllViewsInLayout();
                     layout.invalidate();
                     layout.addView(shapesDropdown, dialogLayoutParams);
-                    dialog.getWindow().setLayout(650, 700);
+                    dialog.getWindow().setLayout(650, 800);
 
 
                     final EditText side = new EditText(MainActivity.this);
@@ -513,7 +581,25 @@ public class MainActivity extends AppCompatActivity {
                     side.setId(R.id.side);
                     layout.addView(side, dialogLayoutParams);
 
-                    Button submit = new Button(MainActivity.this);
+                    final RadioGroup fillColorGroup = new RadioGroup(MainActivity.this);
+                    fillColorGroup.setLayoutParams(new RadioGroup.LayoutParams(
+                            LinearLayout.LayoutParams.MATCH_PARENT,
+                            LinearLayout.LayoutParams.WRAP_CONTENT));
+                    fillColorGroup.setOrientation(LinearLayout.HORIZONTAL);
+                    fillColorGroup.setId(R.id.rgcircle);
+                    final RadioButton filled = new RadioButton(MainActivity.this);
+                    RadioButton not_filled = new RadioButton(MainActivity.this);
+                    filled.setLayoutParams(new RadioGroup.LayoutParams(RadioGroup.LayoutParams.WRAP_CONTENT, RadioGroup.LayoutParams.WRAP_CONTENT, 1f));
+                    not_filled.setLayoutParams(new RadioGroup.LayoutParams(RadioGroup.LayoutParams.WRAP_CONTENT, RadioGroup.LayoutParams.WRAP_CONTENT, 1f));
+                    filled.setId(R.id.filled);
+                    filled.setText("Filled");
+                    not_filled.setId(R.id.not_filled);
+                    not_filled.setText("Not Filled");
+                    fillColorGroup.addView(filled);
+                    fillColorGroup.addView(not_filled);
+                    layout.addView(fillColorGroup, dialogLayoutParams);
+
+                    final Button submit = new Button(MainActivity.this);
                     submit.setText(R.string.submit);
                     submit.setBackgroundColor(getResources().getColor(R.color.colorPrimary));
                     submit.setVisibility(View.VISIBLE);
@@ -521,27 +607,77 @@ public class MainActivity extends AppCompatActivity {
                     submit.setId(R.id.submit);
                     layout.addView(submit, dialogLayoutParams);
 
+
                     submit.setOnClickListener(new View.OnClickListener() {
                         @Override
                         public void onClick(View v) {
                             if (!side.getText().toString().equals("")) {
                                 if (Integer.parseInt(side.getText().toString()) <= 420) {
-                                    drawSquare(Integer.parseInt(side.getText().toString()));
+                                    if (fillColorGroup.getCheckedRadioButtonId() == filled.getId()) {
+                                        drawSquare(Integer.parseInt(side.getText().toString()), true);
+                                    }else {
+                                        drawSquare(Integer.parseInt(side.getText().toString()), false);
+                                    }
                                     dialog.dismiss();
                                 } else {
-                                  side.setError("Given side exceeds the bounds of visible screen. Please give a valid side.");
+                                    side.setError("Given side exceeds the bounds of visible screen. Please give a valid side.");
                                 }
                             } else
                                 side.setError("Please enter a side");
                         }
                     });
 
+
+
                 } else if (shapesDropdown.getSelectedItem().toString().equals("Triangle")) {
                     layout.removeAllViewsInLayout();
                     layout.invalidate();
                     layout.addView(shapesDropdown, dialogLayoutParams);
+                    dialog.getWindow().setLayout(650, 700);
 
-                    drawTriangle();
+
+                    final RadioGroup fillColorGroup = new RadioGroup(MainActivity.this);
+                    fillColorGroup.setLayoutParams(new RadioGroup.LayoutParams(
+                            LinearLayout.LayoutParams.MATCH_PARENT,
+                            LinearLayout.LayoutParams.WRAP_CONTENT));
+                    fillColorGroup.setOrientation(LinearLayout.HORIZONTAL);
+                    fillColorGroup.setId(R.id.rgcircle);
+                    final RadioButton filled = new RadioButton(MainActivity.this);
+                    RadioButton not_filled = new RadioButton(MainActivity.this);
+                    filled.setLayoutParams(new RadioGroup.LayoutParams(RadioGroup.LayoutParams.WRAP_CONTENT, RadioGroup.LayoutParams.WRAP_CONTENT, 1f));
+                    not_filled.setLayoutParams(new RadioGroup.LayoutParams(RadioGroup.LayoutParams.WRAP_CONTENT, RadioGroup.LayoutParams.WRAP_CONTENT, 1f));
+                    filled.setId(R.id.filled);
+                    filled.setText("Filled");
+                    not_filled.setId(R.id.not_filled);
+                    not_filled.setText("Not Filled");
+                    fillColorGroup.addView(filled);
+                    fillColorGroup.addView(not_filled);
+                    layout.addView(fillColorGroup, dialogLayoutParams);
+
+                    final Button submit = new Button(MainActivity.this);
+                    submit.setText(R.string.submit);
+                    submit.setBackgroundColor(getResources().getColor(R.color.colorPrimary));
+                    submit.setVisibility(View.VISIBLE);
+                    submit.setPadding(30, 30, 30, 30);
+                    submit.setId(R.id.submit);
+                    layout.addView(submit, dialogLayoutParams);
+
+
+                    submit.setOnClickListener(new View.OnClickListener() {
+                        @Override
+                        public void onClick(View v) {
+                            if (fillColorGroup.getCheckedRadioButtonId() == filled.getId()) {
+                                drawTriangle(true);
+                            }else {
+                                drawTriangle(false);
+                            }
+                            dialog.dismiss();
+
+                        }
+                    });
+
+
+
                 }
 
             }
@@ -604,7 +740,7 @@ public class MainActivity extends AppCompatActivity {
                     values.put(MediaStore.Images.Media.IS_PENDING, false);
                     MainActivity.this.getContentResolver().update(uri, values, null, null);
                     isSaved = true;
-                    Toast.makeText(context, "Image Saved to Gallery Successfully!", Toast.LENGTH_SHORT).show();
+                    Toast.makeText(context, "Drawing Saved to Gallery Successfully!", Toast.LENGTH_SHORT).show();
                 } catch (FileNotFoundException e) {
                     e.printStackTrace();
                 }
@@ -624,7 +760,7 @@ public class MainActivity extends AppCompatActivity {
                 values.put(MediaStore.Images.Media.DATA, file.getAbsolutePath());
                 MainActivity.this.getContentResolver().insert(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, values);
                 isSaved = true;
-                Toast.makeText(context, "Image Saved to Gallery Successfully!", Toast.LENGTH_SHORT).show();
+                Toast.makeText(context, "Drawing Saved to Gallery Successfully!", Toast.LENGTH_SHORT).show();
 
             } catch (FileNotFoundException e) {
                 e.printStackTrace();

@@ -32,14 +32,14 @@
         android:orderInCategory="0"/>
 
     <item
-        android:id="@+id/clear"
+        android:id="@+id/erase"
         android:icon="@drawable/ic_eraser"
         android:title="Eraser"
         app:showAsAction="always"
         android:orderInCategory="0"/>
 
     <item
-        android:id="@+id/delete"
+        android:id="@+id/clear"
         android:icon="@drawable/ic_delete"
         android:title="Clear Screen"
         app:showAsAction="ifRoom"
